@@ -29,12 +29,13 @@ async function oktaSignIn(ctx) {
   const config = configValidation();
   const redirectUri = encodeURIComponent(config['OKTA_OAUTH_REDIRECT_URI']);
   const token = ctx.request.header.authorization;
-   console.log("User",ctx)
+  //  console.log("User",ctx)
   
   // Generate a unique state value and store it in the session for later verification
   const state = v4();
-  console.log(ctx.session.jwt)
+  // console.log(ctx.session.jwt)
    if( ctx.session.jwt){
+    delete ctx.session.jwt
     ctx.set('Location', `${process.env.BASE_URL}/admin`);
     return ctx.send({}, 302);
    }
@@ -87,9 +88,10 @@ async function oktaSignInCallback(ctx,req,res) {
     });
    
     ctx.session.oktaToken = response.data.access_token;
+    ctx.session.id = response.data.id_token
  
-    cacheService.set("test", response.data.id_token);
-    console.log(response.data.id_token)
+    // cacheService.set("Id_token", response.data.id_token);
+    //console.log(response.data.id_token)
     // Handle user info
     const email = config['OKTA_ALIAS'] ? oauthService.addAlias(userResponse.data.email, config['OKTA_ALIAS']) : userResponse.data.email;
     const dbUser = await userService.findOneByEmail(email);
@@ -146,7 +148,7 @@ async function oktaLogout(ctx) {
 
   // Retrieve token from session
   const token = ctx.session.oktaToken;
-  const p = cacheService.get("test");
+  const ID = ctx.session.id
 
   // Determine the logout endpoint based on whether the token is present
   let logoutEndpoint;
@@ -154,12 +156,14 @@ async function oktaLogout(ctx) {
   if (token) {
     delete ctx.session.oktaToken;
     delete ctx.session.jwt;
-    logoutEndpoint = `${config['OKTA_LOGOUT_ENDPOINT']}?id_token_hint=${p}&post_logout_redirect_uri=${encodeURIComponent(config['OKTA_OAUTH_POST'])}`;
+    logoutEndpoint = `${config['OKTA_LOGOUT_ENDPOINT']}?id_token_hint=${ID}&post_logout_redirect_uri=${encodeURIComponent(config['OKTA_OAUTH_POST'])}`;
   } else {
     logoutEndpoint = `${process.env.BASE_URL}/admin`;
   }
-  console.log("Token",token)
-  console.log("LogoutURL",logoutEndpoint)
+
+  delete ctx.session.id
+  // console.log("Token",token)
+  // console.log("LogoutURL",logoutEndpoint)
   try {
     // Clear session and cache
     // ctx.session = null;  // Uncomment this if you want to clear the session
