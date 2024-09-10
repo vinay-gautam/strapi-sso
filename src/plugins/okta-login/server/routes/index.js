@@ -33,8 +33,8 @@ module.exports = [
     },
   },
   {
-    method: 'GET',
-    path: '/okta/cache',
+    method: 'POST',
+    path: '/save-token',
     handler: 'okta.getCacheValue',
     config: {
       auth: false,
