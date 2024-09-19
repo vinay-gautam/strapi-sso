@@ -30,7 +30,7 @@ async function oktaSignIn(ctx) {
   const redirectUri = encodeURIComponent(config['OKTA_OAUTH_REDIRECT_URI']);
   const token = ctx.request.header.authorization;
   //  console.log("User",ctx)
-  
+ 
   // Generate a unique state value and store it in the session for later verification
   const state = v4();
   // console.log(ctx.session.jwt)
@@ -176,7 +176,17 @@ async function oktaLogout(ctx) {
    if(ctx.session.jwt){
     delete ctx.session.jwt;
    }
-    
+   ctx.cookies.set('koa.sess', '', {
+    maxAge: 0,  // Expire immediately
+    overwrite: true, // Allow the cookie to be overwritten
+  });
+
+  // Delete the session signature cookie as well
+  ctx.cookies.set('koa.sess.sig', '', {
+    maxAge: 0,  // Expire immediately
+    overwrite: true, // Allow the cookie to be overwritten
+  });
+
     ctx.set('Location', logoutEndpoint);
     return ctx.send({}, 302);
   } catch (e) {
@@ -187,18 +197,21 @@ async function oktaLogout(ctx) {
 
 async function getCacheValue(ctx) {
   try {
-    const value = cacheService.get("test");
-    const k=ctx.session.oktaToken ;
-    if (value) {
-      ctx.send({ k });
-    } else {
-      ctx.send({ message: 'No value found in cache' });
-    }
+    const authHeader = ctx.request.headers['authorization'];
+    const token = authHeader && authHeader.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : null;
+   if(token){
+    ctx.session.jwt = "present";
+   }
+     // Store token in session
+   // console.log("Token received:", token);
   } catch (e) {
-    console.error(e);
-    ctx.send({ error: 'Failed to retrieve value from cache' });
+   // console.error(e);
+    ctx.body = { error: 'Failed to retrieve value from cache' };
   }
 }
+
 
 
 
